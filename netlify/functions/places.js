@@ -9,6 +9,14 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH;
 
+const normalizeHeaders = (headers) => {
+  const result = {};
+  for (const [k, v] of Object.entries(headers || {})) {
+    result[k.toLowerCase()] = v;
+  }
+  return result;
+};
+
 // helper para subir archivo a GitHub
 async function commitToGitHub(filePath, base64Content, message, sha) {
   const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
@@ -46,11 +54,9 @@ async function commitToGitHub(filePath, base64Content, message, sha) {
   return await resp.json();
 }
 
-async function parseMultipart(event) {
+async function parseMultipart(event, headers) {
   return new Promise((resolve, reject) => {
-    const busboy = Busboy({
-  headers: { 'content-type': event.headers['content-type'] || event.headers['Content-Type'] }
-});
+    const busboy = Busboy({ headers });
 
     const result = { fields: {}, files: [] };
 
@@ -73,11 +79,13 @@ async function parseMultipart(event) {
     busboy.on("finish", () => resolve(result));
     busboy.on("error", reject);
 
-    busboy.end(Buffer.from(event.body, event.isBase64Encoded ? "base64" : "utf8"));
+    // ⚠️ multipart siempre en base64 en Netlify
+    busboy.end(Buffer.from(event.body, "base64"));
   });
 }
 
 exports.handler = async (event) => {
+   const headers = normalizeHeaders(event.headers);
   try {
     if (event.httpMethod === "GET") {
       const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
@@ -107,7 +115,7 @@ exports.handler = async (event) => {
       let body;
       let files = [];
 
-      if (event.headers["content-type"]?.includes("multipart/form-data")) {
+      if (headers["content-type"]?.includes("multipart/form-data")) {
         const parsed = await parseMultipart(event);
 
         // aquí payload llega como string => lo parseamos
