@@ -124,6 +124,33 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ ok: true }) };
     }
 
+    if (event.httpMethod === "DELETE") {
+      const { id } = JSON.parse(event.body);
+      if (!id) return { statusCode: 400, body: JSON.stringify({ error: "No id provided" }) };
+
+      // traer places.json actual
+      const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
+      let places = [];
+      try {
+        const res = await fetch(url);
+        if (res.ok) places = await res.json();
+      } catch {
+        places = [];
+      }
+
+      // filtrar el elemento
+      const newPlaces = places.filter(p => String(p.id) !== String(id));
+
+      // subir JSON actualizado
+      await commitToGitHub(
+        dataFile,
+        Buffer.from(JSON.stringify(newPlaces, null, 2)).toString("base64"),
+        `delete place ${id}`
+      );
+
+      return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+    }
+
     return { statusCode: 405, body: "Method Not Allowed" };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };

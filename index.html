@@ -173,13 +173,48 @@
     let currentPoint=null;
 
     function openModal(p){
-      currentPoint=p;
-      mTitle.textContent=p.title;
-      mTags.innerHTML=(p.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
-      mDesc.textContent=p.description;
-      if(p.media?.audio){mAudio.src=p.media.audio;mAudio.style.display='block';} else {mAudio.style.display='none';}
-      modal.classList.add('open');
+    currentPoint = p;
+    mTitle.textContent = p.title;
+    mTags.innerHTML = (p.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
+    mDesc.textContent = p.description;
+
+    // Audio
+    if (p.media?.audios?.length) {
+      mAudio.src = p.media.audios[0]; // si hay varios, solo el primero
+      mAudio.style.display = 'block';
+    } else {
+      mAudio.style.display = 'none';
     }
+
+    // Imágenes
+    let gallery = document.querySelector('.gallery');
+    if (!gallery) {
+      gallery = document.createElement('div');
+      gallery.className = 'gallery';
+      document.querySelector('.content').prepend(gallery);
+    }
+    gallery.innerHTML = '';
+    if (p.media?.images?.length) {
+      p.media.images.forEach(img => {
+        const el = document.createElement('img');
+        el.src = img;
+        gallery.appendChild(el);
+      });
+    }
+
+    // Videos
+    if (p.media?.videos?.length) {
+      p.media.videos.forEach(src => {
+        const el = document.createElement('video');
+        el.src = src;
+        el.controls = true;
+        gallery.appendChild(el);
+      });
+    }
+
+    modal.classList.add('open');
+  }
+
 
     document.getElementById('m-close').onclick=()=>modal.classList.remove('open');
     document.getElementById('editBtn').onclick=()=>{modal.classList.remove('open');openForm(currentPoint);} 
