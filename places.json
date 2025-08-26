@@ -1,0 +1,30 @@
+[
+  {
+    "id": "p1",
+    "title": "Plaza Central",
+    "description": "El corazón de la ciudad, rodeada de cafeterías y arquitectura histórica.",
+    "tags": ["historia", "cultura"],
+    "lat": 4.711,
+    "lng": -74.0721,
+    "images": [
+      "https://upload.wikimedia.org/wikipedia/commons/1/1a/Plaza_Bolivar_Bogota.jpg"
+    ],
+    "videos": [
+      "https://www.youtube.com/embed/Scxs7L0vhZ4"
+    ],
+    "audios": []
+  },
+  {
+    "id": "p2",
+    "title": "Mirador de la Montaña",
+    "description": "Un sitio perfecto para ver el atardecer y tomar fotografías panorámicas.",
+    "tags": ["naturaleza", "paisaje"],
+    "lat": 4.635,
+    "lng": -74.056,
+    "images": [],
+    "videos": [],
+    "audios": [
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    ]
+  }
+]
