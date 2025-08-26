@@ -6,7 +6,7 @@ const mediaDir = "media";       // carpeta para guardar assets
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO;
-const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH;
 
 // helper para subir archivo a GitHub
 async function commitToGitHub(filePath, base64Content, message, sha) {
