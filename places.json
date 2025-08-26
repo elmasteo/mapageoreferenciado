@@ -53,5 +53,32 @@
       "audios": [],
       "videos": []
     }
+  },
+  {
+    "id": 1756238182893,
+    "title": "Casa",
+    "description": "Casa casona casita hogar",
+    "tags": [
+      "casa",
+      "hogar",
+      "casita"
+    ],
+    "coords": [
+      4.7024433233771505,
+      -74.11006271839143
+    ],
+    "files": [
+      {
+        "name": "qr-code-Rifa.png",
+        "type": "image/png"
+      }
+    ],
+    "media": {
+      "images": [
+        "/media/qr-code-Rifa.png"
+      ],
+      "audios": [],
+      "videos": []
+    }
   }
 ]
