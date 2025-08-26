@@ -49,8 +49,8 @@ async function commitToGitHub(filePath, base64Content, message, sha) {
 async function parseMultipart(event) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({
-      headers: event.headers,
-    });
+  headers: { 'content-type': event.headers['content-type'] || event.headers['Content-Type'] }
+});
 
     const result = { fields: {}, files: [] };
 
@@ -109,7 +109,14 @@ exports.handler = async (event) => {
 
       if (event.headers["content-type"]?.includes("multipart/form-data")) {
         const parsed = await parseMultipart(event);
-        body = parsed.fields;
+
+        // aquí payload llega como string => lo parseamos
+        if (parsed.fields.payload) {
+          body = JSON.parse(parsed.fields.payload);
+        } else {
+          body = parsed.fields; // fallback
+        }
+
         files = parsed.files;
       } else {
         body = JSON.parse(event.body);
