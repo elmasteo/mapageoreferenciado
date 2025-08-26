@@ -1,38 +1,105 @@
 // netlify/functions/places.js
 const fs = require("fs");
 const path = require("path");
+const fetch = require("node-fetch");
 
-const file = path.join(__dirname, "../data/places.json");
+const dataFile = "places.json"; // archivo a versionar en GitHub
+const mediaDir = "media";       // carpeta para guardar assets
+
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_REPO = process.env.GITHUB_REPO;
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
+
+// helper para subir archivo a GitHub
+async function commitToGitHub(filePath, content, message) {
+  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
+  
+  // primero consultar si el archivo existe (para obtener sha)
+  const res = await fetch(apiUrl, {
+    headers: { Authorization: `token ${GITHUB_TOKEN}` }
+  });
+  const exists = res.ok ? await res.json() : null;
+  const sha = exists && exists.sha ? exists.sha : undefined;
+
+  const payload = {
+    message,
+    branch: GITHUB_BRANCH,
+    content: Buffer.from(content).toString("base64"),
+    sha
+  };
+
+  const resp = await fetch(apiUrl, {
+    method: "PUT",
+    headers: {
+      Authorization: `token ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`GitHub commit failed: ${err}`);
+  }
+  return await resp.json();
+}
 
 exports.handler = async (event) => {
-  if (event.httpMethod === "GET") {
-    const data = fs.readFileSync(file, "utf8");
-    return { statusCode: 200, body: data };
-  }
+  try {
+    if (event.httpMethod === "GET") {
+      // leer el JSON desde GitHub
+      const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
+      const res = await fetch(url);
+      const data = await res.text();
+      return { statusCode: 200, body: data };
+    }
 
-  if (event.httpMethod === "POST") {
-    const body = JSON.parse(event.body);
-    let places = JSON.parse(fs.readFileSync(file, "utf8"));
-    places.push(body);
-    fs.writeFileSync(file, JSON.stringify(places, null, 2));
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
-  }
+    if (event.httpMethod === "POST") {
+      const body = JSON.parse(event.body);
+      
+      // 1. traer el places.json actual desde GitHub
+      const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
+      let places = [];
+      try {
+        const res = await fetch(url);
+        places = await res.json();
+      } catch {
+        places = [];
+      }
 
-  if (event.httpMethod === "PUT") {
-    const body = JSON.parse(event.body);
-    let places = JSON.parse(fs.readFileSync(file, "utf8"));
-    places = places.map(p => p.id === body.id ? body : p);
-    fs.writeFileSync(file, JSON.stringify(places, null, 2));
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
-  }
+      // 2. guardar archivos si vienen en body.files
+      if (body.files && Array.isArray(body.files)) {
+        for (const file of body.files) {
+          const buffer = Buffer.from(file.data, "base64");
+          const filePath = `${mediaDir}/${file.name}`;
+          await commitToGitHub(filePath, buffer, `add media ${file.name}`);
+          // actualizar referencias en el objeto
+          if (file.type.startsWith("image/")) {
+            body.images = body.images || [];
+            body.images.push(`/${filePath}`);
+          } else if (file.type.startsWith("audio/")) {
+            body.audios = body.audios || [];
+            body.audios.push(`/${filePath}`);
+          } else if (file.type.startsWith("video/")) {
+            body.videos = body.videos || [];
+            body.videos.push(`/${filePath}`);
+          }
+        }
+      }
 
-  if (event.httpMethod === "DELETE") {
-    const { id } = JSON.parse(event.body);
-    let places = JSON.parse(fs.readFileSync(file, "utf8"));
-    places = places.filter(p => p.id !== id);
-    fs.writeFileSync(file, JSON.stringify(places, null, 2));
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
-  }
+      // 3. añadir el nuevo punto al JSON
+      places.push(body);
+      await commitToGitHub(
+        dataFile,
+        JSON.stringify(places, null, 2),
+        `add place ${body.id || "new"}`
+      );
 
-  return { statusCode: 405, body: "Method Not Allowed" };
+      return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+    }
+
+    return { statusCode: 405, body: "Method Not Allowed" };
+  } catch (err) {
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+  }
 };

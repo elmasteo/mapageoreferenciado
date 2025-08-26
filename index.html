@@ -66,6 +66,7 @@
     </div>
   </div>
 
+  <!-- Modal de detalles -->
   <div class="modal" id="modal">
     <div class="card">
       <header>
@@ -85,25 +86,29 @@
     </div>
   </div>
 
+  <!-- Modal de formulario -->
   <div class="form-modal" id="formModal">
     <div class="form-box">
       <h3 id="formTitle">Nuevo punto</h3>
-      <form id="pointForm">
+      <form id="pointForm" enctype="multipart/form-data">
         <label>Título</label>
-        <input type="text" id="f-title" required>
+        <input type="text" id="f-title" name="title" required>
         <label>Descripción</label>
-        <textarea id="f-desc"></textarea>
+        <textarea id="f-desc" name="description"></textarea>
         <label>Tags (separados por coma)</label>
-        <input type="text" id="f-tags">
-        <label>Imágenes (urls separadas por coma)</label>
-        <input type="text" id="f-images">
-        <label>Video (url)</label>
-        <input type="text" id="f-video">
-        <label>Audio (url)</label>
-        <input type="text" id="f-audio">
-        <input type="hidden" id="f-lat">
-        <input type="hidden" id="f-lng">
-        <input type="hidden" id="f-id">
+        <input type="text" id="f-tags" name="tags">
+
+        <label>Imágenes</label>
+        <input type="file" id="f-images" name="images" accept="image/*" multiple>
+        <label>Audio</label>
+        <input type="file" id="f-audio" name="audio" accept="audio/*">
+        <label>Video</label>
+        <input type="file" id="f-video" name="video" accept="video/*">
+
+        <input type="hidden" id="f-lat" name="lat">
+        <input type="hidden" id="f-lng" name="lng">
+        <input type="hidden" id="f-id" name="id">
+
         <button type="submit" class="btn primary">Guardar</button>
         <button type="button" class="btn" id="cancelForm">Cancelar</button>
       </form>
@@ -177,9 +182,6 @@
       document.getElementById('f-title').value=p.title||'';
       document.getElementById('f-desc').value=p.description||'';
       document.getElementById('f-tags').value=(p.tags||[]).join(',');
-      document.getElementById('f-images').value=(p.media?.images||[]).join(',');
-      document.getElementById('f-video').value=p.media?.video||'';
-      document.getElementById('f-audio').value=p.media?.audio||'';
       document.getElementById('f-lat').value=p.coords?p.coords[0]:'';
       document.getElementById('f-lng').value=p.coords?p.coords[1]:'';
       formModal.classList.add('open');
@@ -188,20 +190,25 @@
 
     pointForm.onsubmit=async(e)=>{
       e.preventDefault();
-      const point={
-        id: document.getElementById('f-id').value || Date.now(),
-        title: document.getElementById('f-title').value,
-        description: document.getElementById('f-desc').value,
-        tags: document.getElementById('f-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
-        coords:[parseFloat(document.getElementById('f-lat').value),parseFloat(document.getElementById('f-lng').value)],
-        media:{
-          images: document.getElementById('f-images').value.split(',').map(u=>u.trim()).filter(Boolean),
-          video: document.getElementById('f-video').value||null,
-          audio: document.getElementById('f-audio').value||null
-        }
-      };
-      const method=document.getElementById('f-id').value?'PUT':'POST';
-      await fetch('/.netlify/functions/places',{method,body:JSON.stringify(point)});
+      const formData = new FormData();
+      formData.append("id", document.getElementById('f-id').value || Date.now());
+      formData.append("title", document.getElementById('f-title').value);
+      formData.append("description", document.getElementById('f-desc').value);
+      formData.append("tags", document.getElementById('f-tags').value);
+      formData.append("lat", document.getElementById('f-lat').value);
+      formData.append("lng", document.getElementById('f-lng').value);
+
+      // adjuntar archivos
+      const imgFiles = document.getElementById('f-images').files;
+      for (let file of imgFiles) formData.append("files", file);
+
+      const audioFile = document.getElementById('f-audio').files[0];
+      if (audioFile) formData.append("files", audioFile);
+
+      const videoFile = document.getElementById('f-video').files[0];
+      if (videoFile) formData.append("files", videoFile);
+
+      await fetch('/.netlify/functions/places', { method:"POST", body: formData });
       await loadPlaces();
       formModal.classList.remove('open');
     };
