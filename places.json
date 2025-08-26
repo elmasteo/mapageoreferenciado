@@ -1,5 +1,5 @@
 [
-{
+  {
     "id": 1756221486373,
     "title": "Hospital",
     "description": "hospital prueba",
@@ -26,6 +26,32 @@
       "audios": [],
       "videos": []
     }
+  },
+  {
+    "id": 1756224213509,
+    "title": "Aeropuerto",
+    "description": "Aeropuerto el dorado",
+    "tags": [
+      "aeropuerto",
+      "dorado",
+      "asdasda"
+    ],
+    "coords": [
+      4.702000514284352,
+      -74.14784431457521
+    ],
+    "files": [
+      {
+        "name": "WhatsApp Image 2025-08-25 at 2.22.52 PM.jpeg",
+        "type": "image/jpeg"
+      }
+    ],
+    "media": {
+      "images": [
+        "/media/WhatsApp Image 2025-08-25 at 2.22.52 PM.jpeg"
+      ],
+      "audios": [],
+      "videos": []
+    }
   }
-  
 ]
