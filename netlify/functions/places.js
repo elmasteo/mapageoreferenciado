@@ -49,19 +49,30 @@ async function commitToGitHub(filePath, base64Content, message, sha) {
 exports.handler = async (event) => {
   try {
     if (event.httpMethod === "GET") {
-      // leer el JSON desde GitHub (puede no existir)
       const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
       let data = "[]";
+
       try {
         const res = await fetch(url);
         if (res.ok) {
-          data = await res.text();
+          const text = await res.text();
+          // valida que no esté vacío y sea JSON
+          if (text && text.trim()) {
+            try {
+              JSON.parse(text); // prueba parseo
+              data = text;
+            } catch {
+              data = "[]"; // JSON inválido → fallback
+            }
+          }
         }
       } catch (e) {
-        data = "[]";
+        data = "[]"; // cualquier error → fallback
       }
+
       return { statusCode: 200, body: data };
     }
+
 
     if (event.httpMethod === "POST") {
       const body = JSON.parse(event.body);

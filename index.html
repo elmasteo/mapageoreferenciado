@@ -126,10 +126,27 @@
     const icon = L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#52b788,#00c2ff);"></div>',className:'',iconSize:[18,18]});
     const markersIndex = new Map();
 
-    async function loadPlaces(){
-      const res = await fetch('/.netlify/functions/places');
-      places = await res.json();
-      renderMarkers();
+    async function loadPlaces() {
+      try {
+        const res = await fetch('/.netlify/functions/places');
+        let text = await res.text();
+
+        // fallback a '[]' si está vacío
+        if (!text || !text.trim()) text = '[]';
+
+        try {
+          places = JSON.parse(text);
+        } catch {
+          console.warn("places.json mal formado, cargando array vacío");
+          places = [];
+        }
+
+        renderMarkers();
+      } catch (err) {
+        console.error("Error cargando lugares:", err);
+        places = [];
+        renderMarkers();
+      }
     }
 
     function renderMarkers(){
