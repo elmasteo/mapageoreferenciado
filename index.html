@@ -194,36 +194,44 @@
     }
 
     function renderMarkers(){
-      cluster.clearLayers();
-      markersIndex.clear();
-      places.forEach(p=>{
-        const m = L.marker(p.coords,{icon});
-        m.on('click',()=>openModal(p));
-        cluster.addLayer(m);
-        markersIndex.set(p.id,m);
-      });
-      document.getElementById('count').textContent = `${places.length} elementos`;
-    }
+  cluster.clearLayers();
+  markersIndex.clear();
+  places.forEach(p=>{
+    const m = L.marker(p.coords,{icon});
+    m.on('click',()=>openModal(p));
+    cluster.addLayer(m);
+    markersIndex.set(p.id,m);
+  });
+  document.getElementById('count').textContent = `${places.length} elementos`;
 
-    function enableMarkerPreview() {
+  enableMarkerPreview(); // <<-- aquí se llama después de crear los markers
+}
+
+function enableMarkerPreview() {
   markersIndex.forEach((m,pid) => {
     const p = places.find(pl=>pl.id === pid);
     if (!p) return;
-    m.off('mouseover mousemove mouseout'); // limpiar eventos previos
+
+    // limpiar eventos previos
+    m.off('mouseover mousemove mouseout');
+
     m.on('mouseover', e => {
       previewDiv.innerHTML = `<strong>${p.title}</strong><br>${(p.tags||[]).map(t=>`<span style="background:#52b788;padding:2px 6px;border-radius:4px;margin-right:2px;">${t}</span>`).join('')}`;
       previewDiv.style.left = e.originalEvent.pageX + 10 + 'px';
       previewDiv.style.top = e.originalEvent.pageY + 10 + 'px';
       previewDiv.style.display = 'block';
     });
+
     m.on('mousemove', e => {
       previewDiv.style.left = e.originalEvent.pageX + 10 + 'px';
       previewDiv.style.top = e.originalEvent.pageY + 10 + 'px';
     });
+
     m.on('mouseout', () => previewDiv.style.display = 'none');
   });
 }
 
+/*
 places.forEach(p => {
   const m = markersIndex.get(p.id);
   if (!m) return;
@@ -239,7 +247,7 @@ places.forEach(p => {
   });
   m.on('mouseout', () => previewDiv.style.display = 'none');
 });
-
+*/
 // --- Botón Reset ---
 document.getElementById('reset').onclick = () => {
   searchInput.value = '';
