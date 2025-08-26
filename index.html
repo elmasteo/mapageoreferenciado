@@ -230,24 +230,6 @@ function enableMarkerPreview() {
     m.on('mouseout', () => previewDiv.style.display = 'none');
   });
 }
-
-/*
-places.forEach(p => {
-  const m = markersIndex.get(p.id);
-  if (!m) return;
-  m.on('mouseover', e => {
-    previewDiv.innerHTML = `<strong>${p.title}</strong><br>${(p.tags||[]).map(t=>`<span style="background:#52b788;padding:2px 6px;border-radius:4px;margin-right:2px;">${t}</span>`).join('')}`;
-    previewDiv.style.left = e.originalEvent.pageX + 10 + 'px';
-    previewDiv.style.top = e.originalEvent.pageY + 10 + 'px';
-    previewDiv.style.display = 'block';
-  });
-  m.on('mousemove', e => {
-    previewDiv.style.left = e.originalEvent.pageX + 10 + 'px';
-    previewDiv.style.top = e.originalEvent.pageY + 10 + 'px';
-  });
-  m.on('mouseout', () => previewDiv.style.display = 'none');
-});
-*/
 // --- Botón Reset ---
 document.getElementById('reset').onclick = () => {
   searchInput.value = '';

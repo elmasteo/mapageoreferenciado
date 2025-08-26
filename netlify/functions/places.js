@@ -92,22 +92,32 @@ exports.handler = async (event) => {
       // guardar archivos si vienen en body.files
       if (body.files && Array.isArray(body.files)) {
         for (const file of body.files) {
-          const filePath = `${mediaDir}/${file.name}`;
-          await commitToGitHub(
-            filePath,
-            file.data, // base64 desde el cliente
-            `add media ${file.name}`
-          );
+        const filePath = `${mediaDir}/${file.name}`;
 
-          // actualizar media
-          if (file.type.startsWith("image/")) {
-            body.media.images.push(`/${filePath}`);
-          } else if (file.type.startsWith("audio/")) {
-            body.media.audios.push(`/${filePath}`);
-          } else if (file.type.startsWith("video/")) {
-            body.media.videos.push(`/${filePath}`);
-          }
+        // limpiar posibles encabezados tipo "data:audio/mp3;base64,"
+        let base64Data = file.data;
+        if (base64Data.startsWith("data:")) {
+          base64Data = base64Data.split(",")[1];
         }
+
+        // aseguramos que sea válido base64
+        const safeBase64 = Buffer.from(base64Data, "base64").toString("base64");
+
+        await commitToGitHub(
+          filePath,
+          safeBase64,
+          `add media ${file.name}`
+        );
+
+        if (file.type.startsWith("image/")) {
+          body.media.images.push(`/${filePath}`);
+        } else if (file.type.startsWith("audio/")) {
+          body.media.audios.push(`/${filePath}`);
+        } else if (file.type.startsWith("video/")) {
+          body.media.videos.push(`/${filePath}`);
+        }
+      }
+
 
         // ya no necesitamos guardar `data` dentro de `files`
         body.files = body.files.map(f => ({ name: f.name, type: f.type }));
