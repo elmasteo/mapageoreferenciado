@@ -1,6 +1,4 @@
 // netlify/functions/places.js
-const fs = require("fs");
-const path = require("path");
 const fetch = require("node-fetch");
 
 const dataFile = "places.json"; // archivo a versionar en GitHub
@@ -11,21 +9,25 @@ const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 
 // helper para subir archivo a GitHub
-async function commitToGitHub(filePath, content, message) {
+async function commitToGitHub(filePath, base64Content, message, sha) {
   const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
-  
-  // primero consultar si el archivo existe (para obtener sha)
-  const res = await fetch(apiUrl, {
-    headers: { Authorization: `token ${GITHUB_TOKEN}` }
-  });
-  const exists = res.ok ? await res.json() : null;
-  const sha = exists && exists.sha ? exists.sha : undefined;
+
+  // si no me pasaron sha, lo busco
+  if (!sha) {
+    const res = await fetch(apiUrl, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+    });
+    if (res.ok) {
+      const info = await res.json();
+      sha = info.sha;
+    }
+  }
 
   const payload = {
     message,
     branch: GITHUB_BRANCH,
-    content: Buffer.from(content).toString("base64"),
-    sha
+    content: base64Content, // ya en base64
+    ...(sha ? { sha } : {})
   };
 
   const resp = await fetch(apiUrl, {
@@ -47,22 +49,31 @@ async function commitToGitHub(filePath, content, message) {
 exports.handler = async (event) => {
   try {
     if (event.httpMethod === "GET") {
-      // leer el JSON desde GitHub
+      // leer el JSON desde GitHub (puede no existir)
       const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
-      const res = await fetch(url);
-      const data = await res.text();
+      let data = "[]";
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          data = await res.text();
+        }
+      } catch (e) {
+        data = "[]";
+      }
       return { statusCode: 200, body: data };
     }
 
     if (event.httpMethod === "POST") {
       const body = JSON.parse(event.body);
-      
-      // 1. traer el places.json actual desde GitHub
+
+      // 1. traer el places.json actual
       const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
       let places = [];
       try {
         const res = await fetch(url);
-        places = await res.json();
+        if (res.ok) {
+          places = await res.json();
+        }
       } catch {
         places = [];
       }
@@ -70,9 +81,12 @@ exports.handler = async (event) => {
       // 2. guardar archivos si vienen en body.files
       if (body.files && Array.isArray(body.files)) {
         for (const file of body.files) {
-          const buffer = Buffer.from(file.data, "base64");
           const filePath = `${mediaDir}/${file.name}`;
-          await commitToGitHub(filePath, buffer, `add media ${file.name}`);
+          await commitToGitHub(
+            filePath,
+            file.data, // ya en base64 desde el cliente
+            `add media ${file.name}`
+          );
           // actualizar referencias en el objeto
           if (file.type.startsWith("image/")) {
             body.images = body.images || [];
@@ -91,7 +105,7 @@ exports.handler = async (event) => {
       places.push(body);
       await commitToGitHub(
         dataFile,
-        JSON.stringify(places, null, 2),
+        Buffer.from(JSON.stringify(places, null, 2)).toString("base64"),
         `add place ${body.id || "new"}`
       );
 
