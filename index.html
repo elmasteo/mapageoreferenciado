@@ -126,6 +126,49 @@
     const icon = L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#52b788,#00c2ff);"></div>',className:'',iconSize:[18,18]});
     const markersIndex = new Map();
 
+        // --- Barra de búsqueda (dentro de la topbar) ---
+    const topbar = document.querySelector('.topbar');
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Buscar lugar...';
+    searchInput.style.cssText = `
+      padding:.4rem .6rem;
+      border-radius:8px;
+      border:none;
+      width:200px;
+      background:rgba(255,255,255,.9);
+      color:#000;
+      font-size:0.9rem;
+    `;
+    topbar.insertBefore(searchInput, topbar.firstChild);
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      cluster.clearLayers();
+      places.forEach(p => {
+        if (!query || p.title.toLowerCase().includes(query) || (p.tags||[]).some(t=>t.toLowerCase().includes(query))) {
+          const m = markersIndex.get(p.id);
+          if (m) cluster.addLayer(m);
+        }
+      });
+    });
+    // --- Previsualización al pasar el mouse ---
+    const previewDiv = document.createElement('div');
+    previewDiv.style.cssText = `
+      position:absolute;
+      pointer-events:none;
+      background:rgba(0,0,0,.75);
+      color:#fff;
+      padding:.5rem 1rem;
+      border-radius:8px;
+      max-width:250px;
+      display:none;
+      z-index:2000;
+    `;
+    document.body.appendChild(previewDiv);
+
+
+
     async function loadPlaces() {
       try {
         const res = await fetch('/.netlify/functions/places');
@@ -145,7 +188,8 @@
       } catch (err) {
         console.error("Error cargando lugares:", err);
         places = [];
-        renderMarkers();
+        renderMarkers();     
+        enableMarkerPreview();
       }
     }
 
@@ -160,6 +204,26 @@
       });
       document.getElementById('count').textContent = `${places.length} elementos`;
     }
+
+    function enableMarkerPreview() {
+  markersIndex.forEach((m,pid) => {
+    const p = places.find(pl=>pl.id === pid);
+    if (!p) return;
+    m.off('mouseover mousemove mouseout'); // limpiar eventos previos
+    m.on('mouseover', e => {
+      previewDiv.innerHTML = `<strong>${p.title}</strong><br>${(p.tags||[]).map(t=>`<span style="background:#52b788;padding:2px 6px;border-radius:4px;margin-right:2px;">${t}</span>`).join('')}`;
+      previewDiv.style.left = e.originalEvent.pageX + 10 + 'px';
+      previewDiv.style.top = e.originalEvent.pageY + 10 + 'px';
+      previewDiv.style.display = 'block';
+    });
+    m.on('mousemove', e => {
+      previewDiv.style.left = e.originalEvent.pageX + 10 + 'px';
+      previewDiv.style.top = e.originalEvent.pageY + 10 + 'px';
+    });
+    m.on('mouseout', () => previewDiv.style.display = 'none');
+  });
+}
+
 
     // --- Barra de búsqueda ---
 const searchInput = document.createElement('input');
