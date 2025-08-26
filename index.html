@@ -224,30 +224,6 @@
   });
 }
 
-
-    // --- Barra de búsqueda ---
-const searchInput = document.createElement('input');
-searchInput.type = 'text';
-searchInput.placeholder = 'Buscar lugar...';
-searchInput.style.cssText = 'position:absolute;top:1rem;left:1rem;padding:.5rem;border-radius:8px;border:none;width:200px;z-index:1000;background:rgba(255,255,255,.9);color:#000';
-document.body.appendChild(searchInput);
-
-searchInput.addEventListener('input', () => {
-  const query = searchInput.value.toLowerCase();
-  cluster.clearLayers();
-  places.forEach(p => {
-    if (!query || p.title.toLowerCase().includes(query) || (p.tags||[]).some(t=>t.toLowerCase().includes(query))) {
-      const m = markersIndex.get(p.id);
-      if (m) cluster.addLayer(m);
-    }
-  });
-});
-
-// --- Previsualización al pasar el mouse ---
-const previewDiv = document.createElement('div');
-previewDiv.style.cssText = 'position:absolute;pointer-events:none;background:rgba(0,0,0,.75);color:#fff;padding:.5rem 1rem;border-radius:8px;max-width:250px;display:none;z-index:1000';
-document.body.appendChild(previewDiv);
-
 places.forEach(p => {
   const m = markersIndex.get(p.id);
   if (!m) return;
