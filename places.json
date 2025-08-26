@@ -48,5 +48,33 @@
     "images": [
       "/media/Rifa-PC.jpg"
     ]
+  },
+  {
+    "id": 1756221486373,
+    "title": "Hospital",
+    "description": "hospital prueba",
+    "tags": [
+      "hospital",
+      "prueba",
+      "otra cosa",
+      "nuevo"
+    ],
+    "coords": [
+      4.710978725449663,
+      -74.10968184471132
+    ],
+    "files": [
+      {
+        "name": "Rifa-PC.jpg",
+        "type": "image/jpeg"
+      }
+    ],
+    "media": {
+      "images": [
+        "/media/Rifa-PC.jpg"
+      ],
+      "audios": [],
+      "videos": []
+    }
   }
 ]
