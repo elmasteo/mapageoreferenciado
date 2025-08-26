@@ -188,30 +188,73 @@
     }
     document.getElementById('cancelForm').onclick=()=>formModal.classList.remove('open');
 
-    pointForm.onsubmit=async(e)=>{
-      e.preventDefault();
-      const formData = new FormData();
-      formData.append("id", document.getElementById('f-id').value || Date.now());
-      formData.append("title", document.getElementById('f-title').value);
-      formData.append("description", document.getElementById('f-desc').value);
-      formData.append("tags", document.getElementById('f-tags').value);
-      formData.append("lat", document.getElementById('f-lat').value);
-      formData.append("lng", document.getElementById('f-lng').value);
+    pointForm.onsubmit = async (e) => {
+  e.preventDefault();
 
-      // adjuntar archivos
-      const imgFiles = document.getElementById('f-images').files;
-      for (let file of imgFiles) formData.append("files", file);
+  const body = {
+    id: document.getElementById("f-id").value || Date.now(),
+    title: document.getElementById("f-title").value,
+    description: document.getElementById("f-desc").value,
+    tags: document.getElementById("f-tags").value.split(",").map(t=>t.trim()),
+    coords: [
+      parseFloat(document.getElementById("f-lat").value),
+      parseFloat(document.getElementById("f-lng").value)
+    ],
+    files: []
+  };
 
-      const audioFile = document.getElementById('f-audio').files[0];
-      if (audioFile) formData.append("files", audioFile);
+  // procesar imágenes
+  const imgFiles = document.getElementById("f-images").files;
+  for (let file of imgFiles) {
+    const base64 = await fileToBase64(file);
+    body.files.push({ 
+      name: file.name, 
+      type: file.type, 
+      data: base64.split(",")[1] // quitar encabezado "data:..."
+    });
+  }
 
-      const videoFile = document.getElementById('f-video').files[0];
-      if (videoFile) formData.append("files", videoFile);
+  // audio
+  const audioFile = document.getElementById("f-audio").files[0];
+  if (audioFile) {
+    const base64 = await fileToBase64(audioFile);
+    body.files.push({ 
+      name: audioFile.name, 
+      type: audioFile.type, 
+      data: base64.split(",")[1]
+    });
+  }
 
-      await fetch('/.netlify/functions/places', { method:"POST", body: formData });
-      await loadPlaces();
-      formModal.classList.remove('open');
-    };
+  // video
+  const videoFile = document.getElementById("f-video").files[0];
+  if (videoFile) {
+    const base64 = await fileToBase64(videoFile);
+    body.files.push({ 
+      name: videoFile.name, 
+      type: videoFile.type, 
+      data: base64.split(",")[1]
+    });
+  }
+
+  await fetch("/.netlify/functions/places", { 
+    method: "POST", 
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  await loadPlaces();
+  formModal.classList.remove("open");
+};
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 
     loadPlaces();
   </script>
