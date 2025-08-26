@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapa interactivo – Fichas multimedia</title>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#121822; --muted:#95a3b3; --text:#e8edf2; --accent:#52b788; --accent-2:#00c2ff;
+      --card:#0f141b; --shadow:0 10px 30px rgba(0,0,0,.3);
+    }
+    *{box-sizing:border-box}
+    html,body,#app{height:100%;margin:0}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(120deg,#0b0f14,#111826);color:var(--text)}
+    #app{display:grid;grid-template-rows:auto 1fr}
+    .topbar{display:flex;gap:.75rem;align-items:center;padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(6px);position:sticky;top:0;z-index:1000}
+    .brand{display:flex;align-items:center;gap:.5rem;font-weight:700;letter-spacing:.3px}
+    .brand .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(45deg,var(--accent),var(--accent-2));box-shadow:0 0 14px var(--accent-2)}
+    .topbar .actions{display:flex;gap:.5rem;margin-left:auto}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--text);padding:.55rem .8rem;border-radius:12px;cursor:pointer;transition:.2s;backdrop-filter:blur(2px)}
+    .btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#001018;border:none}
+    #map{height:100%;width:100%}
+    .overlay{position:absolute;right:1rem;top:5.5rem;display:flex;flex-direction:column;gap:.6rem;z-index:999}
+    .chip{padding:.45rem .7rem;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:.85rem}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:1rem;z-index:2000}
+    .modal.open{display:flex}
+    .card{width:min(900px,96vw);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+    .card header{display:flex;justify-content:space-between;align-items:center;padding:1rem;border-bottom:1px solid rgba(255,255,255,.06)}
+    .card h3{margin:.2rem 0;font-size:1.25rem}
+    .tags{display:flex;flex-wrap:wrap;gap:.4rem}
+    .tag{font-size:.75rem;background:rgba(82,183,136,.15);border:1px solid rgba(82,183,136,.4);color:#bff3d6;padding:.25rem .5rem;border-radius:999px}
+    .content{display:grid;gap:1rem;padding:1rem}
+    @media(min-width:900px){.content{grid-template-columns:1.4fr 1fr}}
+    .gallery img, .gallery iframe{width:100%;height:360px;object-fit:cover;background:#0a0f14}
+    .details{display:flex;flex-direction:column;gap:.75rem}
+    .details p{color:var(--muted);line-height:1.6;margin:0}
+    .close{cursor:pointer;border:none;background:transparent;color:var(--muted);font-size:1.2rem}
+    .form-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:3000}
+    .form-modal.open{display:flex}
+    .form-box{background:#1b232d;padding:1.5rem;border-radius:12px;width:400px;max-height:90%;overflow:auto}
+    .form-box label{display:block;margin:.5rem 0 .2rem}
+    .form-box input, .form-box textarea{width:100%;padding:.5rem;border-radius:8px;border:none;margin-bottom:.5rem;background:#0f141b;color:#fff}
+    .form-box button{margin-top:.5rem}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span>Mapa interactivo</div>
+      <div class="actions">
+        <button id="locate" class="btn">📍 Ubicarme</button>
+        <button id="reset" class="btn">🔎 Reset</button>
+      </div>
+    </div>
+    <div style="position:relative">
+      <div id="map"></div>
+      <div class="overlay">
+        <div class="chip">Click en el mapa para agregar un punto</div>
+        <div class="chip" id="count">0 elementos</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="card">
+      <header>
+        <div><h3 id="m-title"></h3><div class="tags" id="m-tags"></div></div>
+        <div>
+          <button id="editBtn" class="btn">✎ Editar</button>
+          <button id="deleteBtn" class="btn">🗑 Eliminar</button>
+          <button class="close" id="m-close">✕</button>
+        </div>
+      </header>
+      <div class="content">
+        <div class="details">
+          <p id="m-desc"></p>
+          <audio id="m-audio" controls></audio>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-modal" id="formModal">
+    <div class="form-box">
+      <h3 id="formTitle">Nuevo punto</h3>
+      <form id="pointForm">
+        <label>Título</label>
+        <input type="text" id="f-title" required>
+        <label>Descripción</label>
+        <textarea id="f-desc"></textarea>
+        <label>Tags (separados por coma)</label>
+        <input type="text" id="f-tags">
+        <label>Imágenes (urls separadas por coma)</label>
+        <input type="text" id="f-images">
+        <label>Video (url)</label>
+        <input type="text" id="f-video">
+        <label>Audio (url)</label>
+        <input type="text" id="f-audio">
+        <input type="hidden" id="f-lat">
+        <input type="hidden" id="f-lng">
+        <input type="hidden" id="f-id">
+        <button type="submit" class="btn primary">Guardar</button>
+        <button type="button" class="btn" id="cancelForm">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    let places = [];
+    const map = L.map('map').setView([4.7110, -74.0721], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+    const cluster = L.markerClusterGroup();
+    map.addLayer(cluster);
+    const icon = L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#52b788,#00c2ff);"></div>',className:'',iconSize:[18,18]});
+    const markersIndex = new Map();
+
+    async function loadPlaces(){
+      const res = await fetch('/.netlify/functions/places');
+      places = await res.json();
+      renderMarkers();
+    }
+
+    function renderMarkers(){
+      cluster.clearLayers();
+      markersIndex.clear();
+      places.forEach(p=>{
+        const m = L.marker(p.coords,{icon});
+        m.on('click',()=>openModal(p));
+        cluster.addLayer(m);
+        markersIndex.set(p.id,m);
+      });
+      document.getElementById('count').textContent = `${places.length} elementos`;
+    }
+
+    map.on('click',e=>{
+      openForm({coords:[e.latlng.lat,e.latlng.lng]});
+    });
+
+    const modal=document.getElementById('modal');
+    const mTitle=document.getElementById('m-title');
+    const mTags=document.getElementById('m-tags');
+    const mDesc=document.getElementById('m-desc');
+    const mAudio=document.getElementById('m-audio');
+    let currentPoint=null;
+
+    function openModal(p){
+      currentPoint=p;
+      mTitle.textContent=p.title;
+      mTags.innerHTML=(p.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
+      mDesc.textContent=p.description;
+      if(p.media?.audio){mAudio.src=p.media.audio;mAudio.style.display='block';} else {mAudio.style.display='none';}
+      modal.classList.add('open');
+    }
+
+    document.getElementById('m-close').onclick=()=>modal.classList.remove('open');
+    document.getElementById('editBtn').onclick=()=>{modal.classList.remove('open');openForm(currentPoint);} 
+    document.getElementById('deleteBtn').onclick=async()=>{
+      if(confirm('¿Eliminar este punto?')){
+        await fetch('/.netlify/functions/places',{method:'DELETE',body:JSON.stringify({id:currentPoint.id})});
+        await loadPlaces();
+        modal.classList.remove('open');
+      }
+    };
+
+    const formModal=document.getElementById('formModal');
+    const pointForm=document.getElementById('pointForm');
+    function openForm(p){
+      document.getElementById('formTitle').textContent=p.id?'Editar punto':'Nuevo punto';
+      document.getElementById('f-id').value=p.id||'';
+      document.getElementById('f-title').value=p.title||'';
+      document.getElementById('f-desc').value=p.description||'';
+      document.getElementById('f-tags').value=(p.tags||[]).join(',');
+      document.getElementById('f-images').value=(p.media?.images||[]).join(',');
+      document.getElementById('f-video').value=p.media?.video||'';
+      document.getElementById('f-audio').value=p.media?.audio||'';
+      document.getElementById('f-lat').value=p.coords?p.coords[0]:'';
+      document.getElementById('f-lng').value=p.coords?p.coords[1]:'';
+      formModal.classList.add('open');
+    }
+    document.getElementById('cancelForm').onclick=()=>formModal.classList.remove('open');
+
+    pointForm.onsubmit=async(e)=>{
+      e.preventDefault();
+      const point={
+        id: document.getElementById('f-id').value || Date.now(),
+        title: document.getElementById('f-title').value,
+        description: document.getElementById('f-desc').value,
+        tags: document.getElementById('f-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
+        coords:[parseFloat(document.getElementById('f-lat').value),parseFloat(document.getElementById('f-lng').value)],
+        media:{
+          images: document.getElementById('f-images').value.split(',').map(u=>u.trim()).filter(Boolean),
+          video: document.getElementById('f-video').value||null,
+          audio: document.getElementById('f-audio').value||null
+        }
+      };
+      const method=document.getElementById('f-id').value?'PUT':'POST';
+      await fetch('/.netlify/functions/places',{method,body:JSON.stringify(point)});
+      await loadPlaces();
+      formModal.classList.remove('open');
+    };
+
+    loadPlaces();
+  </script>
+</body>
+</html>
