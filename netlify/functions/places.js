@@ -12,7 +12,6 @@ const GITHUB_BRANCH = process.env.GITHUB_BRANCH;
 async function commitToGitHub(filePath, base64Content, message, sha) {
   const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
 
-  // si no me pasaron sha, lo busco
   if (!sha) {
     const res = await fetch(apiUrl, {
       headers: { Authorization: `token ${GITHUB_TOKEN}` }
@@ -26,7 +25,7 @@ async function commitToGitHub(filePath, base64Content, message, sha) {
   const payload = {
     message,
     branch: GITHUB_BRANCH,
-    content: base64Content, // ya en base64
+    content: base64Content,
     ...(sha ? { sha } : {})
   };
 
@@ -56,28 +55,26 @@ exports.handler = async (event) => {
         const res = await fetch(url);
         if (res.ok) {
           const text = await res.text();
-          // valida que no esté vacío y sea JSON
           if (text && text.trim()) {
             try {
-              JSON.parse(text); // prueba parseo
+              JSON.parse(text);
               data = text;
             } catch {
-              data = "[]"; // JSON inválido → fallback
+              data = "[]";
             }
           }
         }
       } catch (e) {
-        data = "[]"; // cualquier error → fallback
+        data = "[]";
       }
 
       return { statusCode: 200, body: data };
     }
 
-
     if (event.httpMethod === "POST") {
       const body = JSON.parse(event.body);
 
-      // 1. traer el places.json actual
+      // traer places.json actual
       const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${dataFile}`;
       let places = [];
       try {
@@ -89,30 +86,34 @@ exports.handler = async (event) => {
         places = [];
       }
 
-      // 2. guardar archivos si vienen en body.files
+      // inicializar media
+      body.media = { images: [], audios: [], videos: [] };
+
+      // guardar archivos si vienen en body.files
       if (body.files && Array.isArray(body.files)) {
         for (const file of body.files) {
           const filePath = `${mediaDir}/${file.name}`;
           await commitToGitHub(
             filePath,
-            file.data, // ya en base64 desde el cliente
+            file.data, // base64 desde el cliente
             `add media ${file.name}`
           );
-          // actualizar referencias en el objeto
+
+          // actualizar media
           if (file.type.startsWith("image/")) {
-            body.images = body.images || [];
-            body.images.push(`/${filePath}`);
+            body.media.images.push(`/${filePath}`);
           } else if (file.type.startsWith("audio/")) {
-            body.audios = body.audios || [];
-            body.audios.push(`/${filePath}`);
+            body.media.audios.push(`/${filePath}`);
           } else if (file.type.startsWith("video/")) {
-            body.videos = body.videos || [];
-            body.videos.push(`/${filePath}`);
+            body.media.videos.push(`/${filePath}`);
           }
         }
+
+        // ya no necesitamos guardar `data` dentro de `files`
+        body.files = body.files.map(f => ({ name: f.name, type: f.type }));
       }
 
-      // 3. añadir el nuevo punto al JSON
+      // añadir el nuevo punto al JSON
       places.push(body);
       await commitToGitHub(
         dataFile,
