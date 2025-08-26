@@ -107,5 +107,42 @@
       "audios": [],
       "videos": []
     }
+  },
+  {
+    "id": 1756238619511,
+    "title": "Probando ando",
+    "description": "Prueba otra",
+    "tags": [
+      "prueba",
+      "sigo probando",
+      "es prueba aún"
+    ],
+    "coords": [
+      4.716018457926586,
+      -74.12269592285158
+    ],
+    "files": [
+      {
+        "name": "lunas.jpg",
+        "type": "image/jpeg"
+      },
+      {
+        "name": "lunasv2.jpg",
+        "type": "image/jpeg"
+      },
+      {
+        "name": "parquepapas.jpg",
+        "type": "image/jpeg"
+      }
+    ],
+    "media": {
+      "images": [
+        "/media/lunas.jpg",
+        "/media/lunasv2.jpg",
+        "/media/parquepapas.jpg"
+      ],
+      "audios": [],
+      "videos": []
+    }
   }
 ]
